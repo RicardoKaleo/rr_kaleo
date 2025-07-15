@@ -11,7 +11,8 @@
 - ✅ Step 1.1: Project Setup (Next.js 14, TypeScript, Tailwind CSS, ESLint)
 - ✅ Step 1.2: Supabase Configuration (Database schema, RLS, client setup)
 - ✅ Step 1.3: Authentication System (Login/register, role management, auth middleware)
-- ✅ Step 1.4: Basic Layout & Navigation (shadcn/ui components, dark mode, theme toggle)
+- ✅ Step 1.4: Basic Layout & Navigation (shadcn/ui components, dark mode, theme toggle) — Fully complete: All layout/navigation uses shadcn/ui, dark mode works, and a minimal light/dark theme toggle is present and functional.
+- ✅ Step 1.5: GitHub Version Control Setup (Repository connected, clean history, .gitignore in place, node_modules and large files excluded, ready for collaboration/CI/CD)
 
 ### In Progress:
 - 🔄 Step 1.5: Client Management (Ready to start)
@@ -21,6 +22,14 @@
 - ⏳ Step 1.6: Job Listings Management
 
 ---
+
+## Version Control & Collaboration
+
+- GitHub repository is fully connected and authenticated
+- Clean commit history (no node_modules or large files)
+- .gitignore in place for all sensitive and build files
+- Project pushed to remote repository
+- Ready for collaboration and CI/CD
 
 ## Project Overview
 A SaaS backend tool for managing reverse recruiting clients, with team collaboration features, email campaign management, and comprehensive data tracking.
@@ -241,8 +250,8 @@ data_access_logs (
 - [x] Initialize Next.js 14 project with TypeScript
 - [x] Configure Tailwind CSS and shadcn/ui
 - [x] Set up ESLint and Prettier
-- [ ] Configure environment variables
-- [ ] Set up Git repository and branching strategy
+- [x] Configure environment variables
+- [x] Set up Git repository and branching strategy
 
 **Progress Notes:**
 - ✅ Next.js 14 with App Router successfully initialized
@@ -251,7 +260,7 @@ data_access_logs (
 - ✅ ESLint configured with Next.js core web vitals
 - ✅ shadcn/ui components installed and configured (Card, Button, Input, Label, Badge, Separator, Alert, DropdownMenu)
 - ✅ Dark mode theme system implemented with next-themes
-- ✅ Theme toggle component added to homepage and dashboard
+- ✅ Theme toggle refactored to a minimal slider: only light and dark icons, no labels, no system option. UI is streamlined and matches latest requirements.
 - ✅ All UI components refactored to use shadcn/ui with modern dark styling
 - ✅ Consistent design system with proper color tokens and spacing
 - ✅ Basic project structure created with src/app directory
