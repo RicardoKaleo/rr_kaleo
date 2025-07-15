@@ -23,10 +23,16 @@ async function ensureUserProfile(user: { id: string; email: string }) {
     .eq('id', user.id)
     .single();
 
-  if (!profile) {
-    // Create profile with default values
+  if (profile) {
+    // Only update profile fields that may change, but do NOT overwrite role
+    await supabase.from('user_profiles').update({
+      full_name: user.email // or use user.user_metadata.full_name if available
+    }).eq('id', user.id);
+  } else if (!profile && !profileError) {
+    // If no profile, insert a new one with default role
     await supabase.from('user_profiles').insert({
       id: user.id,
+      email: user.email,
       full_name: user.email, // or use user.user_metadata.full_name if available
       role: 'final_user'
     });
@@ -38,17 +44,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refreshUser = async () => {
+    setLoading(true); // Ensure loading is set to true at the start
+    console.log('[AuthContext] refreshUser called');
     try {
-      const currentUser = await getCurrentUser()
-      setUser(currentUser)
-      if (user) {
-        await ensureUserProfile(user);
+      const currentUser = await getCurrentUser();
+      console.log('[AuthContext] getCurrentUser result:', currentUser);
+      setUser(currentUser);
+      if (currentUser) {
+        await ensureUserProfile(currentUser);
       }
     } catch (error) {
-      console.error('Error refreshing user:', error)
-      setUser(null)
+      console.error('[AuthContext] Error refreshing user:', error);
+      setUser(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
+      console.log('[AuthContext] setLoading(false) called');
     }
   }
 

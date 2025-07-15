@@ -1,3 +1,30 @@
+-- Clean slate: Drop all tables if they exist (reverse dependency order)
+DROP TABLE IF EXISTS data_access_logs CASCADE;
+DROP TABLE IF EXISTS email_recipients CASCADE;
+DROP TABLE IF EXISTS email_campaigns CASCADE;
+DROP TABLE IF EXISTS email_templates CASCADE;
+DROP TABLE IF EXISTS gmail_integrations CASCADE;
+DROP TABLE IF EXISTS job_recruiters CASCADE;
+DROP TABLE IF EXISTS recruiters CASCADE;
+DROP TABLE IF EXISTS job_listings CASCADE;
+DROP TABLE IF EXISTS clients_meta CASCADE;
+DROP TABLE IF EXISTS client_final_users CASCADE;
+DROP TABLE IF EXISTS client_managers CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS user_profiles CASCADE;
+
+-- Clean up custom types
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS application_method CASCADE;
+DROP TYPE IF EXISTS job_status CASCADE;
+DROP TYPE IF EXISTS gender_type CASCADE;
+DROP TYPE IF EXISTS ethnicity_type CASCADE;
+DROP TYPE IF EXISTS veteran_status_type CASCADE;
+DROP TYPE IF EXISTS disability_type CASCADE;
+DROP TYPE IF EXISTS work_preference_type CASCADE;
+DROP TYPE IF EXISTS visa_status_type CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at_column CASCADE;
+
 -- Reverse Recruiting SaaS Database Schema
 -- Run this in your Supabase SQL Editor
 
@@ -5,9 +32,15 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types
-CREATE TYPE user_role AS ENUM ('manager', 'final_user');
-CREATE TYPE application_method AS ENUM ('email', 'linkedin', 'indeed', 'glassdoor', 'company_portal', 'other');
-CREATE TYPE job_status AS ENUM ('active', 'paused', 'closed', 'applied', 'interview_scheduled', 'rejected', 'offer_received');
+DO $$ BEGIN CREATE TYPE user_role AS ENUM ('manager', 'final_user'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE application_method AS ENUM ('email', 'linkedin', 'indeed', 'glassdoor', 'company_portal', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE job_status AS ENUM ('active', 'paused', 'closed', 'applied', 'interview_scheduled', 'rejected', 'offer_received'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE gender_type AS ENUM ('Female', 'Male', 'Non-Binary'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE ethnicity_type AS ENUM ('Asian', 'Black or African American', 'Hispanic or Latino', 'Native American or Native Alaska', 'Native Haiwaiian or other Pacific Islander', 'Two or more races'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE veteran_status_type AS ENUM ('I am a protected veteran', 'I am a veteran but not protected', 'I am not a veteran'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE disability_type AS ENUM ('I don''t have a disability', 'I have a disability'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE work_preference_type AS ENUM ('Full Remote', 'Hybrid', 'On-Site'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE visa_status_type AS ENUM ('I have a work permit', 'I need to be sponsored for VISA', 'I''m a citizen', 'Other (Comment to Specify)'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- User Profiles (extends Supabase auth)
 CREATE TABLE user_profiles (
@@ -32,7 +65,7 @@ CREATE TABLE clients (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Client Assignments
+-- Client Assignments (move up)
 CREATE TABLE client_managers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
@@ -50,6 +83,54 @@ CREATE TABLE client_final_users (
   UNIQUE(client_id),
   UNIQUE(final_user_id)
 );
+
+-- Clients Meta (Extended Profile Fields)
+CREATE TABLE clients_meta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID UNIQUE REFERENCES clients(id) ON DELETE CASCADE,
+  gender gender_type,
+  ethnicity ethnicity_type,
+  veteran_status veteran_status_type,
+  disability disability_type,
+  salary_expectations TEXT,
+  notice_period TEXT,
+  title_role TEXT,
+  travel_percent NUMERIC,
+  client_references TEXT,
+  geographic_preferences TEXT,
+  work_experience TEXT,
+  work_preference work_preference_type,
+  visa_status visa_status_type,
+  observations TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_clients_meta_client_id ON clients_meta(client_id);
+
+-- Enable Row Level Security (RLS) for clients_meta
+ALTER TABLE clients_meta ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Only managers/final users assigned to the client can view/edit meta
+CREATE POLICY "Assigned users can view client meta" ON clients_meta
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM client_managers WHERE client_id = clients_meta.client_id AND manager_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM client_final_users WHERE client_id = clients_meta.client_id AND final_user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Assigned users can update client meta" ON clients_meta
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM client_managers WHERE client_id = clients_meta.client_id AND manager_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM client_final_users WHERE client_id = clients_meta.client_id AND final_user_id = auth.uid()
+    )
+  );
 
 -- Job Listings
 CREATE TABLE job_listings (
@@ -169,7 +250,7 @@ CREATE INDEX idx_client_final_users_final_user_id ON client_final_users(final_us
 CREATE INDEX idx_data_access_logs_user_id ON data_access_logs(user_id);
 CREATE INDEX idx_data_access_logs_created_at ON data_access_logs(created_at);
 
--- Enable Row Level Security (RLS)
+-- Enable Row Level Security (RLS) - move after all tables and indexes
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client_managers ENABLE ROW LEVEL SECURITY;
@@ -183,14 +264,18 @@ ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_recipients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_access_logs ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-
+-- All CREATE POLICY statements (move after RLS is enabled)
 -- User Profiles: Users can only see their own profile
 CREATE POLICY "Users can view own profile" ON user_profiles
   FOR SELECT USING (auth.uid() = id);
 
 CREATE POLICY "Users can update own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = id);
+
+-- Add RLS policy for insert
+CREATE POLICY "Users can insert own profile" ON user_profiles
+  FOR INSERT
+  WITH CHECK (auth.uid() = id);
 
 -- Clients: Managers can see assigned clients, final users can see their single assigned client
 CREATE POLICY "Managers can view assigned clients" ON clients
@@ -269,6 +354,7 @@ CREATE POLICY "Users can manage own templates" ON email_templates
 CREATE POLICY "Users can view own logs" ON data_access_logs
   FOR SELECT USING (user_id = auth.uid());
 
+-- Functions and triggers (keep at the end)
 -- Functions for automatic timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

@@ -19,7 +19,7 @@ export default function RegisterPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const { signUp } = useAuth()
+  const { signUp, signIn } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,9 +46,16 @@ export default function RegisterPage() {
       if (error) {
         setError(error.message)
       } else {
-        router.push(
-          "/auth/login?message=Registration successful! Please check your email to confirm your account."
+        // Automatically sign in the user after registration
+        const { data: signInData, error: signInError } = await signIn(
+          formData.email,
+          formData.password
         )
+        if (signInError) {
+          setError(signInError.message)
+        } else {
+          router.push("/dashboard")
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred")
