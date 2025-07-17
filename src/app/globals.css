@@ -65,4 +65,27 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom scrollbar styles for all scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+/* Light mode: dark thumb */
+::-webkit-scrollbar-thumb {
+  background: #222; /* dark gray for visibility on white */
+  border-radius: 4px;
+}
+/* Dark mode: white thumb */
+.dark ::-webkit-scrollbar-thumb {
+  background: #fff;
+}
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+.dark * {
+  scrollbar-color: #fff transparent;
 } 

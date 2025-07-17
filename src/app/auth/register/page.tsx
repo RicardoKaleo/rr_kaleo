@@ -19,6 +19,7 @@ export default function RegisterPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const { signUp, signIn } = useAuth()
   const router = useRouter()
 
@@ -26,6 +27,8 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setInfo("")
+    
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
@@ -36,29 +39,26 @@ export default function RegisterPage() {
       setLoading(false)
       return
     }
+
     try {
-      const { user, error } = await signUp(
+      // Sign up the user
+      await signUp(
         formData.email,
         formData.password,
         formData.fullName,
         formData.role
       )
-      if (error) {
-        setError(error.message)
-      } else {
-        // Automatically sign in the user after registration
-        const { data: signInData, error: signInError } = await signIn(
-          formData.email,
-          formData.password
-        )
-        if (signInError) {
-          setError(signInError.message)
-        } else {
+      
+      // Try to sign in (will fail if email confirmation is required)
+      try {
+        await signIn(formData.email, formData.password)
           router.push("/dashboard")
-        }
+      } catch (signInErr: any) {
+        // If sign in fails, likely due to email confirmation
+        setInfo("Registration successful! Please check your email to confirm your account before logging in.")
       }
-    } catch (err) {
-      setError("An unexpected error occurred")
+    } catch (err: any) {
+      setError(err?.message || "Failed to create account")
     } finally {
       setLoading(false)
     }
@@ -151,7 +151,16 @@ export default function RegisterPage() {
               />
             </div>
           </div>
-          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          {error && (
+            <div className="p-3 text-sm text-white bg-destructive rounded-md">
+              {error}
+            </div>
+          )}
+          {info && (
+            <div className="p-3 text-sm text-white bg-primary rounded-md">
+              {info}
+            </div>
+          )}
           <Button type="submit" className="w-full mt-2" disabled={loading}>
             {loading ? "Creating account..." : "Create account"}
           </Button>

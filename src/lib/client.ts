@@ -1,7 +1,9 @@
-import { supabase, Database } from './supabase'
+import { createBrowserSupabaseClient } from './supabase/client'
+import type { Database } from './database.types'
 
 // Fetch a client and its meta by client_id
 export async function getClientWithMeta(clientId: string) {
+  const supabase = createBrowserSupabaseClient();
   const { data: client, error: clientError } = await supabase
     .from('clients')
     .select('*')
@@ -24,6 +26,7 @@ export async function createClient(
   client: Omit<Database['public']['Tables']['clients']['Insert'], 'id'>,
   withEmptyMeta = true
 ) {
+  const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('clients')
     .insert([client])
@@ -50,6 +53,7 @@ export async function upsertClientMeta(
   clientId: string,
   meta: Partial<Omit<Database['public']['Tables']['clients_meta']['Insert'], 'client_id'>>
 ) {
+  const supabase = createBrowserSupabaseClient();
   // Upsert: if exists, update; if not, insert
   const { data, error } = await supabase
     .from('clients_meta')
@@ -61,6 +65,7 @@ export async function upsertClientMeta(
 
 // Fetch all clients (id and name for listing)
 export async function getAllClients() {
+  const supabase = createBrowserSupabaseClient();
   const { data, error } = await supabase
     .from('clients')
     .select('id, name')

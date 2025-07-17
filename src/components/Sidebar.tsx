@@ -5,10 +5,13 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Home, Users, Briefcase, Mail, Calendar, Activity, FileText, MessageCircle, Settings, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
+import { ThemeToggle } from './ThemeToggle';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const navLinks = [
   { label: 'Dashboard', icon: Home, href: '/dashboard' },
-  { label: 'Client Management', icon: Users, href: '/clients' },
+  { label: 'Client Management', icon: Users, href: '/dashboard/clients' },
   { label: 'Job Listings', icon: Briefcase, href: '/jobs' },
   { label: 'Messages', icon: Mail, href: '/messages' },
   { label: 'Calendar', icon: Calendar, href: '/calendar' },
@@ -19,10 +22,19 @@ const navLinks = [
 const accountLinks = [
   { label: 'Chat', icon: MessageCircle, href: '/chat' },
   { label: 'Settings', icon: Settings, href: '/settings' },
-  { label: 'Log out', icon: LogOut, href: '/auth/logout' },
 ];
 
 export function Sidebar({ collapsed, onCollapse }: { collapsed: boolean, onCollapse: () => void }) {
+  const { signOut } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (!error) {
+      router.push('/auth/login');
+    }
+  };
+
   return (
     <aside className={cn(
       'h-screen bg-background border-r flex flex-col transition-all duration-300',
@@ -60,9 +72,22 @@ export function Sidebar({ collapsed, onCollapse }: { collapsed: boolean, onColla
           </Link>
         ))}
       </nav>
-      <div className="p-4 mt-auto flex items-center justify-between">
-        <div className={cn('flex items-center gap-2', collapsed && 'hidden')}>
-          <span className="text-xs text-muted-foreground">Dark Mode</span>
+      <div className="border-t">
+        <div className="p-4 flex flex-col gap-4">
+          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-between')}>
+            <ThemeToggle />
+          </div>
+          <Button
+            variant="ghost"
+            className={cn(
+              'flex items-center gap-3 w-full',
+              collapsed && 'justify-center'
+            )}
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-5 w-5" />
+            {!collapsed && <span>Sign Out</span>}
+          </Button>
         </div>
       </div>
     </aside>

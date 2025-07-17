@@ -23,14 +23,11 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const { data, error } = await signIn(email, password)
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push("/dashboard")
-      }
-    } catch (err) {
-      setError("An unexpected error occurred")
+      await signIn(email, password)
+      router.push("/dashboard")
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err?.message || "Failed to sign in")
     } finally {
       setLoading(false)
     }
@@ -75,7 +72,11 @@ export default function LoginPage() {
               />
             </div>
           </div>
-          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          {error && (
+            <div className="p-3 text-sm text-white bg-destructive rounded-md">
+              {error}
+            </div>
+          )}
           <Button type="submit" className="w-full mt-2" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>

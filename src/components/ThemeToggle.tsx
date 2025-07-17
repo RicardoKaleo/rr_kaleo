@@ -11,7 +11,37 @@ const themes = [
 ]
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme, systemTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  // After mounting, we have access to the theme
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex bg-muted rounded-full px-1 py-1 shadow-inner">
+          {themes.map(({ value, icon: Icon }) => (
+            <button
+              key={value}
+              aria-label={value.charAt(0).toUpperCase() + value.slice(1) + ' theme'}
+              className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary",
+                "text-muted-foreground"
+              )}
+              disabled
+              type="button"
+            >
+              <Icon className="h-5 w-5 opacity-50" />
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   // Determine the current theme (resolvedTheme for system)
   const current = theme === "system" ? resolvedTheme : theme
 
