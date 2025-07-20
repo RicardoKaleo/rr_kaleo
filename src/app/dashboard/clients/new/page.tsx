@@ -11,9 +11,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ClientMetaForm } from '@/components/clients/ClientMetaForm';
 import { ArrowLeft, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ClientData {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   company: string;
   status: string;
@@ -41,12 +44,14 @@ const STATUS_OPTIONS = ['active', 'inactive', 'prospect'];
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMeta, setShowMeta] = useState(false);
   
   const [clientData, setClientData] = useState<ClientData>({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     company: '',
     status: 'active'
@@ -61,28 +66,43 @@ export default function NewClientPage() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      
+      // Get user role
+      let userRole = null;
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profileError) throw profileError;
+        userRole = profile.role;
+      }
       // Insert client
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .insert(clientData)
         .select()
         .single();
-
       if (clientError) throw clientError;
-
+      // If manager, auto-assign as manager
+      if (user && userRole === 'manager') {
+        const { error: assignError } = await supabase
+          .from('client_managers')
+          .insert({ client_id: client.id, manager_id: user.id });
+        if (assignError) throw assignError;
+      }
       // Insert client meta if provided
       if (showMeta && Object.keys(clientMeta).length > 0) {
         const { error: metaError } = await supabase
           .from('clients_meta')
           .insert({ ...clientMeta, client_id: client.id });
-
         if (metaError) throw metaError;
       }
-
+      toast.success('Client created', { description: 'The client was successfully created.' });
       router.push('/dashboard/clients');
     } catch (err: any) {
       setError(err.message || 'Failed to create client');
+      toast.error('Error', { description: err.message || 'Failed to create client' });
     } finally {
       setLoading(false);
     }
@@ -122,12 +142,22 @@ export default function NewClientPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="first_name">First Name *</Label>
                 <Input
-                  id="name"
-                  value={clientData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter client name"
+                  id="first_name"
+                  value={clientData.first_name}
+                  onChange={(e) => handleInputChange('first_name', e.target.value)}
+                  placeholder="Enter first name"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="last_name">Last Name *</Label>
+                <Input
+                  id="last_name"
+                  value={clientData.last_name}
+                  onChange={(e) => handleInputChange('last_name', e.target.value)}
+                  placeholder="Enter last name"
                   required
                 />
               </div>

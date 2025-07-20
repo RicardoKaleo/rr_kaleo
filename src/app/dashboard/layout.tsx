@@ -9,8 +9,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        {/* Desktop Sidebar */}
+      <div className="flex h-screen bg-background overflow-hidden">
+        {/* Desktop Sidebar - Fixed */}
         <div className="hidden md:block">
           <Sidebar collapsed={collapsed} onCollapse={() => setCollapsed(!collapsed)} />
         </div>
@@ -18,8 +18,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="md:hidden fixed top-4 left-4 z-50">
           <MobileSidebar />
         </div>
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:ml-0">
+        {/* Main Content - Scrollable */}
+        <main className="flex-1 overflow-y-auto p-4 md:ml-0">
           {children}
         </main>
       </div>

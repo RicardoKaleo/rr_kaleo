@@ -1,6 +1,5 @@
 -- Clean slate: Drop all tables if they exist (reverse dependency order)
 DROP TABLE IF EXISTS data_access_logs CASCADE;
-DROP TABLE IF EXISTS email_recipients CASCADE;
 DROP TABLE IF EXISTS email_campaigns CASCADE;
 DROP TABLE IF EXISTS email_templates CASCADE;
 DROP TABLE IF EXISTS gmail_integrations CASCADE;
@@ -33,7 +32,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types
 DO $$ BEGIN CREATE TYPE user_role AS ENUM ('manager', 'final_user'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE application_method AS ENUM ('email', 'linkedin', 'indeed', 'glassdoor', 'company_portal', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE application_method AS ENUM ('email', 'linkedin', 'job_search_site', 'company_portal', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE job_status AS ENUM ('active', 'paused', 'closed', 'applied', 'interview_scheduled', 'rejected', 'offer_received'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE gender_type AS ENUM ('Female', 'Male', 'Non-Binary'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE ethnicity_type AS ENUM ('Asian', 'Black or African American', 'Hispanic or Latino', 'Native American or Native Alaska', 'Native Haiwaiian or other Pacific Islander', 'Two or more races'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -54,7 +53,8 @@ CREATE TABLE user_profiles (
 -- Clients
 CREATE TABLE clients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
   email TEXT NOT NULL,
   company TEXT,
   phone TEXT,
@@ -142,7 +142,6 @@ CREATE TABLE job_listings (
   salary_range TEXT,
   job_url TEXT,
   description TEXT,
-  requirements TEXT[],
   application_method application_method NOT NULL,
   application_url TEXT,
   status job_status DEFAULT 'active',
@@ -187,6 +186,20 @@ CREATE TABLE gmail_integrations (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Google Drive Integrations (User-based, not client-based)
+CREATE TABLE google_drive_integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  token_expires_at TIMESTAMP WITH TIME ZONE,
+  email_address TEXT NOT NULL,
+  folder_id TEXT, -- The folder where resumes will be stored
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id) -- Add unique constraint for upsert operations
+);
+
 -- Email Templates
 CREATE TABLE email_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -210,20 +223,17 @@ CREATE TABLE email_campaigns (
   status TEXT DEFAULT 'draft',
   scheduled_at TIMESTAMP WITH TIME ZONE,
   sent_at TIMESTAMP WITH TIME ZONE,
+  resume_file_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Email Recipients
-CREATE TABLE email_recipients (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  campaign_id UUID REFERENCES email_campaigns(id) ON DELETE CASCADE,
-  recruiter_id UUID REFERENCES recruiters(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'pending',
-  sent_at TIMESTAMP WITH TIME ZONE,
-  replied_at TIMESTAMP WITH TIME ZONE,
-  thread_id TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add to email_campaigns table
+ALTER TABLE email_campaigns 
+ADD COLUMN thread_id TEXT,
+ADD COLUMN replied_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN reply_status TEXT DEFAULT 'pending'; -- 'pending', 'sent', 'replied'
+
+
 
 -- Data Access Logs
 CREATE TABLE data_access_logs (
@@ -249,6 +259,7 @@ CREATE INDEX idx_client_final_users_client_id ON client_final_users(client_id);
 CREATE INDEX idx_client_final_users_final_user_id ON client_final_users(final_user_id);
 CREATE INDEX idx_data_access_logs_user_id ON data_access_logs(user_id);
 CREATE INDEX idx_data_access_logs_created_at ON data_access_logs(created_at);
+CREATE INDEX idx_google_drive_integrations_user_id ON google_drive_integrations(user_id);
 
 -- Enable Row Level Security (RLS) - move after all tables and indexes
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -259,9 +270,9 @@ ALTER TABLE job_listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recruiters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_recruiters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gmail_integrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE google_drive_integrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_recipients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_access_logs ENABLE ROW LEVEL SECURITY;
 
 -- All CREATE POLICY statements (move after RLS is enabled)
@@ -350,6 +361,16 @@ CREATE POLICY "Users can view own templates" ON email_templates
 CREATE POLICY "Users can manage own templates" ON email_templates
   FOR ALL USING (user_id = auth.uid());
 
+-- Google Drive Integrations: Users can only see their own integrations
+CREATE POLICY "Users can view own drive integrations" ON google_drive_integrations
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "Users can manage own drive integrations" ON google_drive_integrations
+  FOR ALL USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert own drive integrations" ON google_drive_integrations
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
 -- Data Access Logs: Only system can insert, users can view their own logs
 CREATE POLICY "Users can view own logs" ON data_access_logs
   FOR SELECT USING (user_id = auth.uid());
@@ -370,3 +391,66 @@ CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients FOR EACH ROW E
 CREATE TRIGGER update_job_listings_updated_at BEFORE UPDATE ON job_listings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_recruiters_updated_at BEFORE UPDATE ON recruiters FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_email_templates_updated_at BEFORE UPDATE ON email_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+
+-- Add resume_file_url to the existing email_campaigns table
+ALTER TABLE email_campaigns 
+ADD COLUMN resume_file_url TEXT;
+
+-- Create email_campaign_followups table
+CREATE TABLE email_campaign_followups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id UUID NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
+    
+    -- 2nd follow-up configuration
+    second_followup_enabled BOOLEAN DEFAULT false,
+    second_followup_template_id UUID REFERENCES email_templates(id),
+    second_followup_days_after INTEGER DEFAULT 3,
+    
+    -- 3rd follow-up configuration
+    third_followup_enabled BOOLEAN DEFAULT false,
+    third_followup_template_id UUID REFERENCES email_templates(id),
+    third_followup_days_after INTEGER DEFAULT 7,
+    
+    -- Status tracking
+    second_followup_sent_at TIMESTAMP WITH TIME ZONE,
+    third_followup_sent_at TIMESTAMP WITH TIME ZONE,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE gmail_watch_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gmail_integration_id UUID REFERENCES gmail_integrations(id) ON DELETE CASCADE,
+  history_id TEXT NOT NULL,
+  expiration_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  topic_name TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  last_sync_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(gmail_integration_id)
+);
+
+-- Gmail History Tracking (stores processed history IDs)
+CREATE TABLE gmail_history_tracking (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gmail_integration_id UUID REFERENCES gmail_integrations(id) ON DELETE CASCADE,
+  history_id TEXT NOT NULL,
+  processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(gmail_integration_id, history_id)
+);
+
+-- Reply Tracking (enhanced email_campaigns table)
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS reply_detected_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS reply_content TEXT;
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS reply_sender TEXT;
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS reply_message_id TEXT;
+ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS last_history_id TEXT;
+
+-- Indexes for performance
+CREATE INDEX idx_gmail_watch_subscriptions_integration ON gmail_watch_subscriptions(gmail_integration_id);
+CREATE INDEX idx_gmail_watch_subscriptions_active ON gmail_watch_subscriptions(is_active);
+CREATE INDEX idx_gmail_history_tracking_integration_history ON gmail_history_tracking(gmail_integration_id, history_id);
+CREATE INDEX idx_email_campaigns_thread_id ON email_campaigns(thread_id);
+CREATE INDEX idx_email_campaigns_reply_status ON email_campaigns(reply_status);

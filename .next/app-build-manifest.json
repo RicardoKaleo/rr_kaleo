@@ -1,15 +1,5 @@
 {
   "pages": {
-    "/dashboard/clients/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/clients/page.js"
-    ],
-    "/dashboard/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/layout.js"
-    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -21,10 +11,55 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
-    "/dashboard/clients/new/page": [
+    "/dashboard/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/clients/new/page.js"
+      "static/chunks/app/dashboard/layout.js"
+    ],
+    "/dashboard/clients/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/clients/page.js"
+    ],
+    "/dashboard/gmail-integration/test-watches/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/gmail-integration/test-watches/page.js"
+    ],
+    "/dashboard/email-campaigns/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/email-campaigns/page.js"
+    ],
+    "/dashboard/job-listings/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/job-listings/page.js"
+    ],
+    "/dashboard/job-listings/send-email/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/job-listings/send-email/page.js"
+    ],
+    "/dashboard/email-templates/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/email-templates/page.js"
+    ],
+    "/dashboard/gmail-integration/debug-reply/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/gmail-integration/debug-reply/page.js"
+    ],
+    "/dashboard/gmail-integration/test-fallback/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/gmail-integration/test-fallback/page.js"
+    ],
+    "/dashboard/email-campaigns/[clientId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/email-campaigns/[clientId]/page.js"
     ]
   }
 }

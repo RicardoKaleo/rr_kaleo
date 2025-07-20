@@ -1,4 +1,7 @@
 {
-  "/dashboard/clients/page": "app/dashboard/clients/page.js",
-  "/dashboard/clients/new/page": "app/dashboard/clients/new/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/gmail-integration/test-watches/page": "app/dashboard/gmail-integration/test-watches/page.js",
+  "/dashboard/email-campaigns/page": "app/dashboard/email-campaigns/page.js",
+  "/dashboard/gmail-integration/test-fallback/page": "app/dashboard/gmail-integration/test-fallback/page.js",
+  "/dashboard/email-campaigns/[clientId]/page": "app/dashboard/email-campaigns/[clientId]/page.js"
 }

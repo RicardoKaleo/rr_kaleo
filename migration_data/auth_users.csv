@@ -1,0 +1,1 @@
+﻿id,email,encrypted_password,email_confirmed_at,created_at,updated_at,last_sign_in_at,raw_app_meta_data,raw_user_meta_data,is_super_admin,phone,phone_confirmed_at

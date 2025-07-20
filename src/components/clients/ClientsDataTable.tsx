@@ -6,26 +6,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '../ui/button';
 import { PlusIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
-import { Sheet, SheetContent } from '../ui/sheet';
-import { ClientMetaForm } from './ClientMetaForm';
 import { Input } from '../ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/select';
-import { Info, Save } from 'lucide-react';
 import { ColumnDef, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Badge } from '../ui/badge';
+import { ClientActions } from './ClientActions';
+import { Mail } from 'lucide-react';
 
 interface Client {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  company: string;
+  company: string | null;
   status: string;
   created_at: string;
-}
-
-interface ClientMeta {
-  [key: string]: any;
 }
 
 const STATUS_OPTIONS = ['active', 'inactive', 'prospect'];
@@ -42,21 +38,17 @@ export default function ClientsDataTable() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Meta drawer state
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [meta, setMeta] = useState<ClientMeta>({});
-  const [metaLoading, setMetaLoading] = useState(false);
-  const [metaError, setMetaError] = useState<string | null>(null);
-  const [metaSaving, setMetaSaving] = useState(false);
+  // Meta data state
+  const [meta, setMeta] = useState<Record<string, any>>({});
 
   // Filtering state
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [globalFilter, setGlobalFilter] = useState('');
 
-  useEffect(() => {
-    async function fetchClients() {
+  // Function to fetch all client and meta data
+  const fetchData = async () => {
       if (!user) return;
+    setLoading(true);
       const supabase = createBrowserSupabaseClient();
       try {
         // First get the user's role
@@ -93,14 +85,67 @@ export default function ClientsDataTable() {
         const { data, error } = await query;
         if (error) throw error;
         setClients(data || []);
+      await loadMeta(data || []); // Pass clients to loadMeta
       } catch (error) {
         console.error('Error fetching clients:', error);
       } finally {
         setLoading(false);
       }
-    }
-    fetchClients();
+  };
+  
+  useEffect(() => {
+    fetchData();
   }, [user]);
+
+  // Check for OAuth success on mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('oauth_success') === 'true') {
+      fetchData(); // Refetch all data
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+
+  // Load meta data function
+  const loadMeta = async (currentClients: Client[]) => {
+    if (!user) return;
+    const supabase = createBrowserSupabaseClient();
+    try {
+      const [metaResponse, gmailResponse] = await Promise.all([
+        supabase.from('clients_meta').select('*'),
+        supabase.from('gmail_integrations').select('*').eq('is_active', true)
+      ]);
+      
+      if (metaResponse.error) throw metaResponse.error;
+      if (gmailResponse.error) throw gmailResponse.error;
+      
+      // Convert array to object with client_id as key
+      const metaMap = (metaResponse.data || []).reduce((acc, item) => {
+        acc[item.client_id] = item;
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Add Gmail integration status to meta
+      (gmailResponse.data || []).forEach(integration => {
+        if (!metaMap[integration.client_id]) {
+          metaMap[integration.client_id] = {};
+        }
+        metaMap[integration.client_id].gmail_integration = integration;
+      });
+      
+      setMeta(metaMap);
+    } catch (err) {
+      console.error('Failed to load meta data:', err);
+    }
+  };
+
+  // Load meta data on mount - This is now handled by fetchData
+  // useEffect(() => {
+  //   loadMeta();
+  // }, [user]);
 
   // Inline edit handlers
   const startEdit = (client: Client) => {
@@ -108,11 +153,13 @@ export default function ClientsDataTable() {
     setEditValues(client);
     setEditError(null);
   };
+
   const cancelEdit = () => {
     setEditingId(null);
     setEditValues({});
     setEditError(null);
   };
+
   const saveEdit = async () => {
     if (!editingId) return;
     setEditSaving(true);
@@ -134,56 +181,77 @@ export default function ClientsDataTable() {
     }
   };
 
-  // Meta drawer handlers (unchanged)
-  const handleOpenMeta = async (client: Client) => {
-    setSelectedClient(client);
-    setDrawerOpen(true);
-    setMetaLoading(true);
-    setMetaError(null);
-    const supabase = createBrowserSupabaseClient();
-    try {
-      const { data, error } = await supabase
-        .from('clients_meta')
-        .select('*')
-        .eq('client_id', client.id)
-        .single();
-      if (error) throw error;
-      setMeta(data || {});
-    } catch (err: any) {
-      setMetaError(err.message || 'Failed to load meta data');
-      setMeta({});
-    } finally {
-      setMetaLoading(false);
-    }
-  };
-  const handleSaveMeta = async () => {
-    if (!selectedClient) return;
-    setMetaSaving(true);
-    setMetaError(null);
-    const supabase = createBrowserSupabaseClient();
-    try {
-      const { error } = await supabase
-        .from('clients_meta')
-        .upsert({ ...meta, client_id: selectedClient.id }, { onConflict: 'client_id' });
-      if (error) throw error;
-      setDrawerOpen(false);
-    } catch (err: any) {
-      setMetaError(err.message || 'Failed to save meta data');
-    } finally {
-      setMetaSaving(false);
-    }
-  };
-
   // Filtering logic for status
   const filteredClients = useMemo(() => {
     if (!statusFilter || statusFilter === 'all') return clients;
     return clients.filter(c => c.status === statusFilter);
   }, [clients, statusFilter]);
 
+  // Define columns for TanStack Table
+  const columns = useMemo<ColumnDef<Client, any>[]>(() => [
+    {
+      accessorKey: 'first_name',
+      header: 'First Name',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : row.original.first_name,
+    },
+    {
+      accessorKey: 'last_name',
+      header: 'Last Name',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : row.original.last_name,
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : row.original.email,
+    },
+    {
+      accessorKey: 'company',
+      header: 'Company',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : row.original.company,
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : (
+        <Badge className={`text-xs px-2 py-0.5 ${getStatusBadgeColor(row.original.status)}`} style={{ pointerEvents: 'none' }}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'Created At',
+      enableSorting: true,
+      cell: ({ row }) => row.original.id === editingId ? null : new Date(row.original.created_at).toLocaleDateString(),
+    },
+
+    {
+      id: 'actions',
+      header: () => <span className="block text-right w-full">Actions</span>,
+      cell: ({ row }) => row.original.id === editingId ? null : (
+        <div className="flex justify-end gap-2">
+          <Button size="default" variant="outline" className="h-10" onClick={() => startEdit(row.original)}>
+            Edit
+          </Button>
+          <ClientActions 
+            client={row.original}
+            meta={meta[row.original.id] || {}}
+            onMetaChange={fetchData} // Use fetchData to refresh all data
+          />
+        </div>
+      ),
+    },
+  ], [editingId, meta]);
+
   // Toolbar for status filter and add button
   const toolbar = (
     <div className="flex gap-2 items-center">
-      <Select value={statusFilter || 'all'} onValueChange={val => setStatusFilter(val === 'all' ? undefined : val)}>
+      <Select value={statusFilter || 'all'} onValueChange={val => setStatusFilter(val === 'all' ? '' : val)}>
         <SelectTrigger className="h-10 px-4 w-[160px]">
           <SelectValue placeholder="All Statuses" />
         </SelectTrigger>
@@ -200,11 +268,6 @@ export default function ClientsDataTable() {
       </Button>
     </div>
   );
-
-  const cellInputClass =
-    "w-full bg-transparent border border-transparent px-4 h-8 leading-8 text-foreground text-sm font-normal rounded focus:border-primary focus:ring-0 focus:outline-none shadow-none min-w-0 transition-colors";
-  const cellSelectClass =
-    "w-full bg-transparent border border-transparent px-4 h-8 leading-8 text-foreground text-sm font-normal rounded focus:border-primary focus:ring-0 focus:outline-none shadow-none min-w-0 transition-colors appearance-none";
 
   function getStatusBadgeColor(status: string) {
     switch (status) {
@@ -229,7 +292,10 @@ export default function ClientsDataTable() {
     };
     return <>
       <td className="p-4 align-middle">
-        <Input value={values.name ?? ''} onChange={e => handleChange('name', e.target.value)} />
+        <Input value={values.first_name ?? ''} onChange={e => handleChange('first_name', e.target.value)} />
+      </td>
+      <td className="p-4 align-middle">
+        <Input value={values.last_name ?? ''} onChange={e => handleChange('last_name', e.target.value)} />
       </td>
       <td className="p-4 align-middle">
         <Input value={values.email ?? ''} onChange={e => handleChange('email', e.target.value)} />
@@ -260,58 +326,6 @@ export default function ClientsDataTable() {
       </td>
     </>;
   }
-
-  // Define columns for TanStack Table, but use a custom cell renderer for the edit row
-  const columns = useMemo<ColumnDef<Client, any>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: 'Name',
-      enableSorting: true,
-      cell: ({ row }) => row.original.id === editingId ? null : row.original.name,
-    },
-    {
-      accessorKey: 'email',
-      header: 'Email',
-      enableSorting: true,
-      cell: ({ row }) => row.original.id === editingId ? null : row.original.email,
-    },
-    {
-      accessorKey: 'company',
-      header: 'Company',
-      enableSorting: true,
-      cell: ({ row }) => row.original.id === editingId ? null : row.original.company,
-    },
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      enableSorting: true,
-      cell: ({ row }) => row.original.id === editingId ? null : (
-        <Badge className={`text-base px-4 py-1 ${getStatusBadgeColor(row.original.status)}`} style={{ pointerEvents: 'none' }}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'created_at',
-      header: 'Created At',
-      enableSorting: true,
-      cell: ({ row }) => row.original.id === editingId ? null : new Date(row.original.created_at).toLocaleDateString(),
-    },
-    {
-      id: 'actions',
-      header: () => <span className="block text-right w-full">Actions</span>,
-      cell: ({ row }) => row.original.id === editingId ? null : (
-        <div className="flex gap-2 justify-end">
-          <Button size="default" variant="outline" className="h-10" onClick={() => startEdit(row.original)}>
-            Edit
-          </Button>
-          <Button size="default" variant="outline" className="h-10 min-w-[2.5rem] flex items-center justify-center" onClick={() => handleOpenMeta(row.original)} aria-label="Meta Info">
-            <Info className="w-4 h-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ], [editingId]);
 
   const table = useReactTable({
     data: filteredClients,
@@ -381,25 +395,7 @@ export default function ClientsDataTable() {
                     <tr key={row.id}>
                       <InlineEditRow
                         client={row.original}
-                        onSave={async (values) => {
-                          setEditSaving(true);
-                          setEditError(null);
-                          try {
-                            const supabase = createBrowserSupabaseClient();
-                            const { error } = await supabase
-                              .from('clients')
-                              .update(values)
-                              .eq('id', row.original.id);
-                            if (error) throw error;
-                            setClients(prev => prev.map(c => (c.id === row.original.id ? { ...c, ...values } : c)));
-                            setEditingId(null);
-                            setEditValues({});
-                          } catch (err: any) {
-                            setEditError(err.message || 'Failed to save changes');
-                          } finally {
-                            setEditSaving(false);
-                          }
-                        }}
+                        onSave={saveEdit}
                         onCancel={cancelEdit}
                         saving={editSaving}
                       />
@@ -446,31 +442,6 @@ export default function ClientsDataTable() {
           </div>
         </div>
       </div>
-      {/* Meta drawer remains unchanged */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full max-w-lg flex flex-col h-full">
-          {selectedClient && (
-            <div className="flex flex-col h-full">
-              <h3 className="text-xl font-semibold mb-4">Info of {selectedClient.name}</h3>
-              <div className="flex-1 overflow-y-auto">
-                {metaLoading ? (
-                  <div>Loading...</div>
-                ) : metaError ? (
-                  <div className="text-red-500 mb-4">{metaError}</div>
-                ) : (
-                  <ClientMetaForm value={meta} onChange={setMeta} readOnly={false} noCard noTitle />
-                )}
-              </div>
-              <div className="pt-4 border-t bg-background sticky bottom-0 flex justify-end z-10">
-                <Button onClick={handleSaveMeta} disabled={metaSaving} className="w-full flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4 mr-2" />
-                  {metaSaving ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 } 

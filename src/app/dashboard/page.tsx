@@ -6,9 +6,14 @@ import AuthGuard from '@/components/AuthGuard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import DriveIntegration from '@/components/DriveIntegration';
+import GmailWatchTest from '@/components/GmailWatchTest';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { TestTube } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth(); // refreshUser now provided by context
 
   // Refresh user data when page becomes visible
   useEffect(() => {
@@ -52,7 +57,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Full Name:</h3>
-                  <p className="mt-1">{user?.full_name || user?.email}</p>
+                  <p className="mt-1">{user?.email}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Email:</h3>
@@ -66,6 +71,32 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Integrations */}
+          <div className="px-4 sm:px-6">
+            <h2 className="text-xl font-semibold mb-4">Integrations</h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              <DriveIntegration />
+            </div>
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Gmail Push/Pull Notifications Test */}
+          <div className="px-4 sm:px-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Gmail Push/Pull Notifications Test</h2>
+              <Link href="/dashboard/test-reply-detection">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <TestTube className="h-4 w-4" />
+                  Test Reply Detection
+                </Button>
+              </Link>
+            </div>
+            <GmailWatchTest />
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import SupabaseTest from "@/components/SupabaseTest"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -34,8 +35,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <Card className="w-full max-w-md p-8 shadow-xl bg-card">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground p-4">
+      <div className="w-full max-w-4xl space-y-8">
+        <Card className="w-full max-w-md mx-auto p-8 shadow-xl bg-card">
         <h2 className="text-2xl font-bold text-center mb-2">Sign in to your account</h2>
         <p className="text-center text-sm text-muted-foreground mb-6">
           Or {" "}
@@ -82,6 +84,9 @@ export default function LoginPage() {
           </Button>
         </form>
       </Card>
+        
+        <SupabaseTest />
+      </div>
     </main>
   )
 } 

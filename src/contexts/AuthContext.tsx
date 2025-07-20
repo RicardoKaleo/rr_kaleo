@@ -13,6 +13,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>; // <-- Add this line
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -125,6 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add refreshUser function
+  const refreshUser = async () => {
+    const supabase = createBrowserSupabaseClient();
+    try {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      setUser(authUser);
+      setAuthStatus(authUser ? 'authenticated' : 'unauthenticated');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'An error occurred');
+      setAuthStatus('unauthenticated');
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -133,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    refreshUser, // <-- Add this line
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

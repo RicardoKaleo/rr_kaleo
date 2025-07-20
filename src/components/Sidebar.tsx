@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Home, Users, Briefcase, Mail, Calendar, Activity, FileText, MessageCircle, Settings, LogOut, Menu } from 'lucide-react';
+import { Home, Users, Briefcase, FileText, Mail, LogOut, Menu, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,17 +11,11 @@ import { useRouter } from 'next/navigation';
 
 const navLinks = [
   { label: 'Dashboard', icon: Home, href: '/dashboard' },
-  { label: 'Client Management', icon: Users, href: '/dashboard/clients' },
-  { label: 'Job Listings', icon: Briefcase, href: '/jobs' },
-  { label: 'Messages', icon: Mail, href: '/messages' },
-  { label: 'Calendar', icon: Calendar, href: '/calendar' },
-  { label: 'Activity', icon: Activity, href: '/activity' },
-  { label: 'Static', icon: FileText, href: '/static' },
-];
-
-const accountLinks = [
-  { label: 'Chat', icon: MessageCircle, href: '/chat' },
-  { label: 'Settings', icon: Settings, href: '/settings' },
+  { label: 'Clients', icon: Users, href: '/dashboard/clients' },
+  { label: 'Job Listings', icon: Briefcase, href: '/dashboard/job-listings' },
+  { label: 'Email Templates', icon: FileText, href: '/dashboard/email-templates' },
+  { label: 'Email Campaigns', icon: Mail, href: '/dashboard/email-campaigns' },
+  { label: 'Gmail Watch Test', icon: Settings, href: '/dashboard/gmail-integration/test-watches' },
 ];
 
 export function Sidebar({ collapsed, onCollapse }: { collapsed: boolean, onCollapse: () => void }) {
@@ -29,10 +23,8 @@ export function Sidebar({ collapsed, onCollapse }: { collapsed: boolean, onColla
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (!error) {
-      router.push('/auth/login');
-    }
+    await signOut();
+    router.push('/auth/login');
   };
 
   return (
@@ -48,21 +40,9 @@ export function Sidebar({ collapsed, onCollapse }: { collapsed: boolean, onColla
       </div>
       <nav className="flex-1 px-2 space-y-2">
         <div className="text-xs text-muted-foreground px-2 pt-2 pb-1 uppercase tracking-wide">
-          Overview
+          Navigation
         </div>
         {navLinks.map(({ label, icon: Icon, href }) => (
-          <Link key={label} href={href} className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors',
-            collapsed && 'justify-center'
-          )}>
-            <Icon className="h-5 w-5" />
-            {!collapsed && <span>{label}</span>}
-          </Link>
-        ))}
-        <div className="mt-6 text-xs text-muted-foreground px-2 pb-1 uppercase tracking-wide">
-          Account
-        </div>
-        {accountLinks.map(({ label, icon: Icon, href }) => (
           <Link key={label} href={href} className={cn(
             'flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors',
             collapsed && 'justify-center'

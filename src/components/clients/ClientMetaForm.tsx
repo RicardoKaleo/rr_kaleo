@@ -6,6 +6,7 @@ import { Label } from '../ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Separator } from '../ui/separator'
 import { Textarea } from '../ui/textarea'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '../ui/select'
 
 const genderOptions = ['Female', 'Male', 'Non-Binary'] as const
 const ethnicityOptions = [
@@ -69,66 +70,78 @@ export function ClientMetaForm({ value, onChange, readOnly, noCard, noTitle }: P
   }
   const formContent = (
     <div className="space-y-4 p-4 custom-scrollbar overflow-y-auto">
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Gender */}
         <div>
           <Label>Gender</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.gender ?? ''}
-            onChange={e => handleSelect('gender', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('gender', val)}
           >
-            <option value="">Select...</option>
-            {genderOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {genderOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Ethnicity */}
         <div>
           <Label>Ethnicity</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.ethnicity ?? ''}
-            onChange={e => handleSelect('ethnicity', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('ethnicity', val)}
           >
-            <option value="">Select...</option>
-            {ethnicityOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {ethnicityOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Veteran Status */}
         <div>
           <Label>Veteran Status</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.veteran_status ?? ''}
-            onChange={e => handleSelect('veteran_status', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('veteran_status', val)}
           >
-            <option value="">Select...</option>
-            {veteranStatusOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {veteranStatusOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Disability */}
         <div>
           <Label>Disability</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.disability ?? ''}
-            onChange={e => handleSelect('disability', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('disability', val)}
           >
-            <option value="">Select...</option>
-            {disabilityOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {disabilityOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Salary Expectations */}
         <div>
@@ -172,7 +185,7 @@ export function ClientMetaForm({ value, onChange, readOnly, noCard, noTitle }: P
           />
         </div>
         {/* References */}
-        <div className="md:col-span-2">
+        <div className="col-span-1 md:col-span-2">
           <Label>References</Label>
           <Textarea
             disabled={readOnly}
@@ -183,7 +196,7 @@ export function ClientMetaForm({ value, onChange, readOnly, noCard, noTitle }: P
           />
         </div>
         {/* Geographic Preferences */}
-        <div className="md:col-span-2">
+        <div className="col-span-1 md:col-span-2">
           <Label>Geographic Preferences</Label>
           <Input
             disabled={readOnly}
@@ -193,7 +206,7 @@ export function ClientMetaForm({ value, onChange, readOnly, noCard, noTitle }: P
           />
         </div>
         {/* Work Experience */}
-        <div className="md:col-span-2">
+        <div className="col-span-1 md:col-span-2">
           <Label>Work Experience</Label>
           <Input
             disabled={readOnly}
@@ -205,35 +218,41 @@ export function ClientMetaForm({ value, onChange, readOnly, noCard, noTitle }: P
         {/* Work Preference */}
         <div>
           <Label>Work Preference</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.work_preference ?? ''}
-            onChange={e => handleSelect('work_preference', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('work_preference', val)}
           >
-            <option value="">Select...</option>
-            {workPreferenceOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {workPreferenceOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Visa Status */}
         <div>
           <Label>Visa Status</Label>
-          <select
+          <Select
             disabled={readOnly}
             value={value.visa_status ?? ''}
-            onChange={e => handleSelect('visa_status', e.target.value)}
-            className="w-full bg-background border border-input rounded px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            onValueChange={val => handleSelect('visa_status', val)}
           >
-            <option value="">Select...</option>
-            {visaStatusOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {visaStatusOptions.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Observations */}
-        <div className="md:col-span-2">
+        <div className="col-span-1 md:col-span-2">
           <Label>Observations</Label>
           <Textarea
             disabled={readOnly}
